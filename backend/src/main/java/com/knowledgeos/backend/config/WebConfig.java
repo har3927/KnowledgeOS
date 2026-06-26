@@ -14,7 +14,12 @@ public class WebConfig {
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
+        String allowed = System.getenv("ALLOWED_ORIGINS");
+        if (allowed != null && !allowed.isBlank()) {
+            config.setAllowedOriginPatterns(List.of(allowed.split(",")));
+        } else {
+            config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
+        }
         config.setAllowedHeaders(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
