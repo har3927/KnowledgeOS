@@ -7,3 +7,5 @@
 *.class
 *.log
 .env
+/db/
+*.db

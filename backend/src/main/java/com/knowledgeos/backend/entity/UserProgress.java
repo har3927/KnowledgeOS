@@ -33,6 +33,21 @@ public class UserProgress {
     @Column(name = "completed_at")
     private Instant completedAt;
 
+    @Column(name = "warm_up_text", columnDefinition = "TEXT")
+    private String warmUpText;
+
+    @Column(name = "quiz_score")
+    private Double quizScore;
+
+    @Column(name = "feynman_submission", columnDefinition = "TEXT")
+    private String feynmanSubmission;
+
+    @Column(name = "feynman_score")
+    private Double feynmanScore;
+
+    @Column(name = "feynman_feedback", columnDefinition = "TEXT")
+    private String feynmanFeedback;
+
     @PrePersist
     void prePersist() {
         if (status == null) status = ProgressStatus.NOT_STARTED;

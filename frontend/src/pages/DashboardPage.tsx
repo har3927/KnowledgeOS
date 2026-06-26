@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { BookOpen, CheckCircle, Clock, Flame, RotateCcw } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -27,7 +28,22 @@ function StatCard({ title, value, icon: Icon, color }: { title: string; value: n
 }
 
 export function DashboardPage() {
+  const navigate = useNavigate()
+  const [theme, setTheme] = useState('')
+  const [generating, setGenerating] = useState(false)
   const { data, isLoading } = useQuery({ queryKey: ['dashboard'], queryFn: api.learning.dashboard })
+
+  const handleGenerateRandom = async () => {
+    setGenerating(true)
+    try {
+      const topic = await api.topics.generateRandom(theme)
+      navigate(`/topics/${topic.id}`)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -62,9 +78,9 @@ export function DashboardPage() {
             <CardTitle>Today&apos;s Recommendation</CardTitle>
             <CardDescription>Your personalized learning suggestion</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {data.todayRecommendation?.topicId ? (
-              <div className="space-y-3">
+              <div className="space-y-3 pb-4 border-b">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-[var(--color-primary)]" />
                   <span className="font-medium">{data.todayRecommendation.topicTitle}</span>
@@ -76,8 +92,33 @@ export function DashboardPage() {
                 </Button>
               </div>
             ) : (
-              <p className="text-sm text-[var(--color-muted-foreground)]">{data.todayRecommendation?.reason || 'No recommendations yet'}</p>
+              <div className="pb-4 border-b">
+                <p className="text-sm text-[var(--color-muted-foreground)]">{data.todayRecommendation?.reason || 'No recommendations yet'}</p>
+              </div>
             )}
+
+            <div className="space-y-3 pt-2">
+              <h4 className="text-sm font-semibold flex items-center gap-1">
+                <Flame className="h-4 w-4 text-orange-500" />
+                Want something new?
+              </h4>
+              <p className="text-xs text-[var(--color-muted-foreground)]">
+                Generate a completely new AI topic on any random field or theme of your choice.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. History, Space, Coding (optional)..."
+                  className="flex-1 h-9 rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={theme}
+                  onChange={(e) => setTheme(e.target.value)}
+                  disabled={generating}
+                />
+                <Button onClick={handleGenerateRandom} disabled={generating}>
+                  {generating ? 'Generating...' : 'Surprise Me'}
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
 

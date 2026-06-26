@@ -48,6 +48,13 @@ public class TopicController {
         return topicService.create(request);
     }
 
+    @PostMapping("/generate-random")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Generate a random topic using AI")
+    public Dtos.TopicDto generateRandom(@RequestParam(required = false) String categoryHint) {
+        return topicService.generateRandomTopic(categoryHint);
+    }
+
     @PutMapping("/{id}")
     @Operation(summary = "Update a topic")
     public Dtos.TopicDto update(@PathVariable Long id, @RequestBody Dtos.TopicUpdateRequest request) {

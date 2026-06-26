@@ -6,6 +6,7 @@ import com.knowledgeos.backend.exception.ResourceNotFoundException;
 import com.knowledgeos.backend.mapper.EntityMapper;
 import com.knowledgeos.backend.repository.*;
 import lombok.RequiredArgsConstructor;
+import com.knowledgeos.backend.ai.AiProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -21,9 +22,11 @@ public class TopicService {
     private final TopicRepository topicRepository;
     private final TopicPrerequisiteRepository prerequisiteRepository;
     private final CategoryService categoryService;
+    private final CategoryRepository categoryRepository;
     private final UserProgressRepository progressRepository;
     private final UserContextService userContext;
     private final EntityMapper mapper;
+    private final AiProvider aiProvider;
 
     @Transactional(readOnly = true)
     public Dtos.PageResponse<Dtos.TopicDto> getTopics(Long categoryId, String difficulty,
@@ -101,5 +104,29 @@ public class TopicService {
     public Topic findTopic(Long id) {
         return topicRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Topic not found: " + id));
+    }
+
+    @Transactional
+    public Dtos.TopicDto generateRandomTopic(String categoryHint) {
+        List<String> existingTitles = topicRepository.findAll().stream()
+                .map(Topic::getTitle)
+                .toList();
+
+        AiProvider.TopicData generated = aiProvider.generateRandomTopic(categoryHint, existingTitles);
+
+        Category category = categoryRepository.findByNameIgnoreCase(generated.categoryName())
+                .orElseGet(() -> categoryRepository.findByNameIgnoreCase("General")
+                        .orElseThrow(() -> new ResourceNotFoundException("Default 'General' category not found")));
+
+        Topic topic = Topic.builder()
+                .category(category)
+                .title(generated.title())
+                .description(generated.description())
+                .difficulty(Difficulty.valueOf(generated.difficulty().toUpperCase()))
+                .estimatedMinutes(generated.estimatedMinutes())
+                .content(generated.content())
+                .build();
+
+        return mapper.toTopicDto(topicRepository.save(topic));
     }
 }

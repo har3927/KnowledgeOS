@@ -80,6 +80,21 @@ public final class Dtos {
         private Double score;
         private Instant startedAt;
         private Instant completedAt;
+
+        private String warmUpText;
+        private Double quizScore;
+        private String feynmanSubmission;
+        private Double feynmanScore;
+        private String feynmanFeedback;
+    }
+
+    @Data @Builder @NoArgsConstructor @AllArgsConstructor
+    public static class TopicCompleteRequest {
+        private String warmUpText;
+        private Double quizScore;
+        private String feynmanSubmission;
+        private Double feynmanScore;
+        private String feynmanFeedback;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
@@ -128,22 +143,6 @@ public final class Dtos {
         private Boolean completed;
     }
 
-    @Data @Builder @NoArgsConstructor @AllArgsConstructor
-    public static class LearningPathDto {
-        private Long id;
-        private String name;
-        private String description;
-        private List<LearningPathTopicDto> topics;
-        private double progressPercentage;
-    }
-
-    @Data @Builder @NoArgsConstructor @AllArgsConstructor
-    public static class LearningPathTopicDto {
-        private Long topicId;
-        private String title;
-        private Integer sequenceNo;
-        private String status;
-    }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class QuizDto {
@@ -201,33 +200,6 @@ public final class Dtos {
         private Instant createdAt;
     }
 
-    @Data @Builder @NoArgsConstructor @AllArgsConstructor
-    public static class GeneratePathRequest {
-        private String goal;
-        private String level;
-    }
-
-    @Data @Builder @NoArgsConstructor @AllArgsConstructor
-    public static class GraphNodeDto {
-        private String id;
-        private String label;
-        private String category;
-        private String difficulty;
-        private String status;
-    }
-
-    @Data @Builder @NoArgsConstructor @AllArgsConstructor
-    public static class GraphEdgeDto {
-        private String id;
-        private String source;
-        private String target;
-    }
-
-    @Data @Builder @NoArgsConstructor @AllArgsConstructor
-    public static class GraphDto {
-        private List<GraphNodeDto> nodes;
-        private List<GraphEdgeDto> edges;
-    }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class ProgressSummaryDto {

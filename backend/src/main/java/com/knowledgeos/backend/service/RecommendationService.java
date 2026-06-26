@@ -23,6 +23,7 @@ public class RecommendationService {
     private final DailyRecommendationRepository recommendationRepository;
     private final UserContextService userContext;
     private final AiProvider aiProvider;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @Transactional
     public Dtos.RecommendationDto getTodayRecommendation(Long userId) {
@@ -36,7 +37,7 @@ public class RecommendationService {
                     .topicTitle(topic.getTitle())
                     .categoryName(topic.getCategory().getName())
                     .difficulty(topic.getDifficulty().name())
-                    .reason(rec.getReason())
+                    .reason(parseRecommendation(rec.getReason()).reason())
                     .build();
         }
 
@@ -108,13 +109,75 @@ public class RecommendationService {
             aiReason = aiProvider.recommendNextTopic(candidateTitles, completedTitles);
         }
 
-        Topic recommended = candidates.getFirst();
+        ParsedRecommendation parsed = parseRecommendation(aiReason);
+        Topic recommended = null;
+
+        if (parsed.topicTitle() != null && !parsed.topicTitle().isBlank()) {
+            String titleToFind = parsed.topicTitle().trim().toLowerCase();
+            for (Topic t : candidates) {
+                if (t.getTitle().trim().toLowerCase().equals(titleToFind)) {
+                    recommended = t;
+                    break;
+                }
+            }
+        }
+
+        if (recommended == null && aiReason != null) {
+            for (Topic t : candidates) {
+                if (aiReason.toLowerCase().contains(t.getTitle().toLowerCase())) {
+                    recommended = t;
+                    break;
+                }
+            }
+        }
+
+        if (recommended == null) {
+            recommended = candidates.getFirst();
+        }
+
         return Dtos.RecommendationDto.builder()
                 .topicId(recommended.getId())
                 .topicTitle(recommended.getTitle())
                 .categoryName(recommended.getCategory().getName())
                 .difficulty(recommended.getDifficulty().name())
-                .reason(aiReason != null ? aiReason : "Next available topic based on prerequisites")
+                .reason(parsed.reason())
                 .build();
+    }
+
+    private record ParsedRecommendation(String topicTitle, String reason) {}
+
+    private ParsedRecommendation parseRecommendation(String rawReason) {
+        if (rawReason == null || rawReason.isBlank()) {
+            return new ParsedRecommendation(null, "Next available topic based on prerequisites");
+        }
+        
+        String clean = rawReason.trim();
+        int braceStart = clean.indexOf('{');
+        int braceEnd = clean.lastIndexOf('}');
+        if (braceStart >= 0 && braceEnd > braceStart) {
+            String jsonPart = clean.substring(braceStart, braceEnd + 1);
+            try {
+                com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(jsonPart);
+                String topic = node.has("topic") ? node.get("topic").asText() : null;
+                String reason = null;
+                if (node.has("reason")) {
+                    reason = node.get("reason").asText();
+                } else if (node.has("explanation")) {
+                    reason = node.get("explanation").asText();
+                }
+                if (reason != null && !reason.isBlank()) {
+                    return new ParsedRecommendation(topic, reason);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to parse recommendation JSON: {}", jsonPart, e);
+            }
+        }
+        
+        // Fallback: remove code fences
+        String cleanedReason = rawReason.replaceAll("(?s)```json\\s*", "")
+                .replaceAll("(?s)```\\s*", "")
+                .trim();
+        
+        return new ParsedRecommendation(null, cleanedReason);
     }
 }

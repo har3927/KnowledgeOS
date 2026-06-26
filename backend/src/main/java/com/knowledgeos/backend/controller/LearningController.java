@@ -24,8 +24,8 @@ public class LearningController {
 
     @PostMapping("/topics/{topicId}/complete")
     @Operation(summary = "Mark topic as complete")
-    public Dtos.ProgressDto completeTopic(@PathVariable Long topicId) {
-        return learningService.completeTopic(topicId);
+    public Dtos.ProgressDto completeTopic(@PathVariable Long topicId, @RequestBody(required = false) Dtos.TopicCompleteRequest request) {
+        return learningService.completeTopic(topicId, request);
     }
 
     @GetMapping("/progress")

@@ -14,6 +14,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class QuizService {
 
     private final QuizRepository quizRepository;
@@ -53,14 +54,14 @@ public class QuizService {
         }
 
         List<QuizQuestion> saved = questionRepository.findByQuizId(quiz.getId());
-        return mapper.toQuizDto(quiz, saved, false);
+        return mapper.toQuizDto(quiz, saved, true);
     }
 
     public Dtos.QuizDto getQuiz(Long quizId) {
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new ResourceNotFoundException("Quiz not found: " + quizId));
         List<QuizQuestion> questions = questionRepository.findByQuizId(quizId);
-        return mapper.toQuizDto(quiz, questions, false);
+        return mapper.toQuizDto(quiz, questions, true);
     }
 
     @Transactional

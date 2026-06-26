@@ -31,11 +31,6 @@ public class AiController {
         return aiService.getConversationHistory();
     }
 
-    @PostMapping("/learning-path")
-    @Operation(summary = "Generate a learning path")
-    public Map<String, String> generateLearningPath(@RequestBody Dtos.GeneratePathRequest request) {
-        return Map.of("path", aiService.generateLearningPath(request));
-    }
 
     @GetMapping("/topics/{topicId}/summary")
     @Operation(summary = "Generate topic summary")
@@ -53,5 +48,12 @@ public class AiController {
     @Operation(summary = "Generate quiz via AI")
     public Dtos.QuizDto generateQuiz(@PathVariable Long topicId) {
         return quizService.generateQuiz(topicId);
+    }
+
+    @PostMapping("/topics/{topicId}/feynman-eval")
+    @Operation(summary = "Evaluate user's Feynman explanation")
+    public Map<String, Object> evaluateFeynman(@PathVariable Long topicId, @RequestBody Map<String, String> payload) {
+        String explanation = payload.get("explanation");
+        return aiService.evaluateFeynman(topicId, explanation);
     }
 }

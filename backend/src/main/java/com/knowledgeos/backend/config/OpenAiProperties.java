@@ -6,10 +6,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@ConfigurationProperties(prefix = "knowledgeos.ai.gemini")
+@ConfigurationProperties(prefix = "knowledgeos.ai.openai")
 @Getter @Setter
-public class GeminiProperties {
+public class OpenAiProperties {
+    private String baseUrl;
+    private String model;
     private String apiKey;
-    private String model = "gemini-2.0-flash";
-    private boolean enabled = true;
+    private boolean enabled;
+    private int timeoutSeconds;
 }

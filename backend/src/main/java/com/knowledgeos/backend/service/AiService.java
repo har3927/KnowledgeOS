@@ -49,12 +49,6 @@ public class AiService {
                 .toList();
     }
 
-    public String generateLearningPath(Dtos.GeneratePathRequest request) {
-        List<String> topics = topicRepository.findAll().stream()
-                .map(Topic::getTitle)
-                .toList();
-        return aiProvider.generateLearningPath(request.getGoal(), request.getLevel(), topics);
-    }
 
     public String summarizeTopic(Long topicId) {
         Topic topic = topicRepository.findById(topicId)
@@ -66,5 +60,28 @@ public class AiService {
         Topic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new com.knowledgeos.backend.exception.ResourceNotFoundException("Topic not found"));
         return aiProvider.generateExplanation(topic.getTitle(), topic.getContent());
+    }
+
+    public java.util.Map<String, Object> evaluateFeynman(Long topicId, String userExplanation) {
+        Topic topic = topicRepository.findById(topicId)
+                .orElseThrow(() -> new com.knowledgeos.backend.exception.ResourceNotFoundException("Topic not found"));
+        
+        String feedback = aiProvider.evaluateFeynmanSummary(topic.getTitle(), topic.getContent(), userExplanation);
+        
+        int score = 70;
+        try {
+            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("Score:\\s*(\\d+)/100", java.util.regex.Pattern.CASE_INSENSITIVE)
+                    .matcher(feedback);
+            if (matcher.find()) {
+                score = Integer.parseInt(matcher.group(1));
+            }
+        } catch (Exception e) {
+            // fallback
+        }
+        
+        return java.util.Map.of(
+            "feedback", feedback,
+            "score", score
+        );
     }
 }

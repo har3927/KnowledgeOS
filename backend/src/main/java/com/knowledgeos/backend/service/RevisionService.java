@@ -13,6 +13,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class RevisionService {
 
     private final RevisionScheduleRepository revisionRepository;
@@ -38,10 +39,38 @@ public class RevisionService {
     }
 
     @Transactional
-    public Dtos.RevisionDto completeRevision(Long revisionId) {
+    public Dtos.RevisionDto completeRevision(Long revisionId, String rating) {
         RevisionSchedule revision = revisionRepository.findById(revisionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Revision not found: " + revisionId));
         revision.setCompleted(true);
-        return mapper.toRevisionDto(revisionRepository.save(revision));
+        RevisionSchedule saved = revisionRepository.save(revision);
+
+        int currentLevel = revision.getRevisionLevel();
+        if (currentLevel < SpacedRepetitionService.REVISION_INTERVALS.length) {
+            int nextLevel = currentLevel + 1;
+            int days = SpacedRepetitionService.REVISION_INTERVALS[nextLevel - 1];
+
+            if ("again".equalsIgnoreCase(rating)) {
+                nextLevel = 1;
+                days = 1;
+            } else if ("easy".equalsIgnoreCase(rating)) {
+                days = days * 2;
+            }
+
+            // Check if it doesn't already exist to avoid duplication
+            if (!revisionRepository.existsByUserIdAndTopicIdAndRevisionLevel(
+                    revision.getUser().getId(), revision.getTopic().getId(), nextLevel)) {
+                RevisionSchedule nextRevision = RevisionSchedule.builder()
+                        .user(revision.getUser())
+                        .topic(revision.getTopic())
+                        .nextRevisionDate(LocalDate.now().plusDays(days))
+                        .revisionLevel(nextLevel)
+                        .completed(false)
+                        .build();
+                revisionRepository.save(nextRevision);
+            }
+        }
+
+        return mapper.toRevisionDto(saved);
     }
 }

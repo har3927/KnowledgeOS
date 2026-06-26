@@ -36,7 +36,7 @@ public class RevisionController {
 
     @PostMapping("/{id}/complete")
     @Operation(summary = "Complete a revision")
-    public Dtos.RevisionDto completeRevision(@PathVariable Long id) {
-        return revisionService.completeRevision(id);
+    public Dtos.RevisionDto completeRevision(@PathVariable Long id, @RequestParam(required = false) String rating) {
+        return revisionService.completeRevision(id, rating);
     }
 }

@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class LearningService {
 
     private final UserProgressRepository progressRepository;
@@ -47,7 +48,7 @@ public class LearningService {
     }
 
     @Transactional
-    public Dtos.ProgressDto completeTopic(Long topicId) {
+    public Dtos.ProgressDto completeTopic(Long topicId, Dtos.TopicCompleteRequest request) {
         User user = userContext.getCurrentUser();
         Topic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new ResourceNotFoundException("Topic not found: " + topicId));
@@ -59,6 +60,15 @@ public class LearningService {
         progress.setCompletedAt(Instant.now());
         if (progress.getStartedAt() == null) {
             progress.setStartedAt(Instant.now());
+        }
+
+        if (request != null) {
+            progress.setWarmUpText(request.getWarmUpText());
+            progress.setQuizScore(request.getQuizScore());
+            progress.setFeynmanSubmission(request.getFeynmanSubmission());
+            progress.setFeynmanScore(request.getFeynmanScore());
+            progress.setFeynmanFeedback(request.getFeynmanFeedback());
+            progress.setScore(request.getFeynmanScore() != null ? request.getFeynmanScore() : request.getQuizScore());
         }
 
         UserProgress saved = progressRepository.save(progress);

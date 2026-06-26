@@ -10,11 +10,16 @@ public interface AiProvider {
 
     String recommendNextTopic(List<String> candidateTopics, List<String> completedTopics);
 
-    String generateLearningPath(String goal, String level, List<String> availableTopics);
 
     String answerQuestion(String question, String context);
 
     String summarizeTopic(String topicTitle, String topicContent);
 
+    TopicData generateRandomTopic(String categoryHint, List<String> existingTopicTitles);
+
+    String evaluateFeynmanSummary(String topicTitle, String topicContent, String userExplanation);
+
     record QuizQuestionData(String question, List<String> options, String answer) {}
+
+    record TopicData(String title, String description, String content, String difficulty, int estimatedMinutes, String categoryName) {}
 }

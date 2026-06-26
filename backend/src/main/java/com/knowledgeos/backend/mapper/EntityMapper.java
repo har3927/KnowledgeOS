@@ -59,6 +59,11 @@ public class EntityMapper {
                 .score(p.getScore())
                 .startedAt(p.getStartedAt())
                 .completedAt(p.getCompletedAt())
+                .warmUpText(p.getWarmUpText())
+                .quizScore(p.getQuizScore())
+                .feynmanSubmission(p.getFeynmanSubmission())
+                .feynmanScore(p.getFeynmanScore())
+                .feynmanFeedback(p.getFeynmanFeedback())
                 .build();
     }
 

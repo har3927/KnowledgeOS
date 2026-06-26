@@ -3,10 +3,9 @@ package com.knowledgeos.backend.ai;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.knowledgeos.backend.config.OllamaProperties;
+import com.knowledgeos.backend.config.OpenAiProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -20,17 +19,16 @@ import java.util.Map;
 
 @Slf4j
 @Service
-@Primary
 @RequiredArgsConstructor
-public class OllamaAiProvider implements AiProvider {
+public class OpenAiAiProvider implements AiProvider {
 
     private static final String SYSTEM_PROMPT = """
             You are KnowledgeOS AI tutor — a helpful, concise learning assistant.
             Give clear educational answers. Use bullet points when summarizing.
-            For quiz requests, return ONLY valid JSON with no markdown or extra text.
+            For quiz and topic requests, return ONLY valid JSON with no markdown or extra text.
             """;
 
-    private final OllamaProperties properties;
+    private final OpenAiProperties properties;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(30))
@@ -73,7 +71,7 @@ public class OllamaAiProvider implements AiProvider {
                 return result;
             }
         } catch (Exception e) {
-            log.warn("Failed to parse Ollama quiz JSON, using fallback", e);
+            log.warn("Failed to parse OpenAi quiz JSON, using fallback", e);
         }
         return fallbackQuiz(topicTitle);
     }
@@ -83,18 +81,16 @@ public class OllamaAiProvider implements AiProvider {
         return chat("""
             Completed topics: %s
             Candidate next topics: %s
-            Recommend the single best next topic and explain why in 2-3 sentences.
+            Recommend the single best next topic from the candidate next topics.
+            
+            Return ONLY a valid JSON object with the following fields:
+            - "topic": "Exact title of the recommended topic"
+            - "reason": "2-3 sentences explaining why this topic is recommended next"
+            
+            No markdown wrapper, no backticks, no code fences. Valid JSON object only.
             """.formatted(completedTopics, candidateTopics));
     }
 
-    @Override
-    public String generateLearningPath(String goal, String level, List<String> availableTopics) {
-        return chat("""
-            Create a learning path for goal: "%s" at %s level.
-            Available topics: %s
-            Return an ordered list of topic names with brief rationale for each step.
-            """.formatted(goal, level, availableTopics));
-    }
 
     @Override
     public String answerQuestion(String question, String context) {
@@ -113,6 +109,41 @@ public class OllamaAiProvider implements AiProvider {
             """.formatted(topicTitle, truncate(topicContent)));
     }
 
+    @Override
+    public TopicData generateRandomTopic(String categoryHint, List<String> existingTopicTitles) {
+        String prompt = """
+            Generate a completely new, unique, and interesting learning topic about technology, software engineering, programming, databases, cloud, or system design.
+            Category Hint (if any): %s
+            Do NOT generate any of the following existing topics: %s
+            
+            Return ONLY a valid JSON object with the following fields:
+            - "title": "Topic Title"
+            - "description": "Short 1-2 sentence description"
+            - "difficulty": "BEGINNER" or "INTERMEDIATE" or "ADVANCED"
+            - "estimatedMinutes": integer representing study time (e.g. 45)
+            - "categoryName": must be exactly "Technology"
+            - "content": "Detailed markdown explanation of the topic (at least 3-4 paragraphs with headers/examples)"
+            
+            No markdown wrapper, no backticks, no code fences. Valid JSON object only.
+            """.formatted(categoryHint != null ? categoryHint : "any random technical interest", existingTopicTitles);
+
+        String response = chat(prompt);
+        try {
+            String json = extractJson(response);
+            return objectMapper.readValue(json, TopicData.class);
+        } catch (Exception e) {
+            log.error("Failed to parse AI generated random topic: {}", response, e);
+            return new TopicData(
+                    "Introduction to Cryptography",
+                    "Learn the basics of securing information using hashing and encryption.",
+                    "Cryptography is the practice and study of techniques for secure communication in the presence of adversarial behavior. It covers symmetric key encryption, public key cryptography, and secure hash algorithms (like SHA-256). These form the backbone of modern internet security, SSL certificates, and digital signatures.",
+                    "BEGINNER",
+                    30,
+                    "Technology"
+            );
+        }
+    }
+
     private String chat(String userPrompt) {
         if (!properties.isEnabled()) {
             return fallbackResponse(userPrompt);
@@ -121,38 +152,58 @@ public class OllamaAiProvider implements AiProvider {
         try {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("model", properties.getModel());
-            body.put("stream", false);
             body.put("messages", List.of(
                     Map.of("role", "system", "content", SYSTEM_PROMPT),
                     Map.of("role", "user", "content", userPrompt)
             ));
 
-            String url = properties.getBaseUrl().replaceAll("/$", "") + "/api/chat";
-            HttpRequest request = HttpRequest.newBuilder()
+            String url = properties.getBaseUrl().replaceAll("/$", "") + "/chat/completions";
+            
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
-                    .timeout(Duration.ofSeconds(properties.getTimeoutSeconds()))
-                    .build();
+                    .timeout(Duration.ofSeconds(properties.getTimeoutSeconds()));
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (properties.getApiKey() != null && !properties.getApiKey().isBlank()) {
+                builder.header("Authorization", "Bearer " + properties.getApiKey());
+            }
+
+            HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                log.error("Ollama API error: {} - {}", response.statusCode(), response.body());
+                log.error("OpenAi API error: {} - {}", response.statusCode(), response.body());
                 return fallbackResponse(userPrompt);
             }
 
             JsonNode root = objectMapper.readTree(response.body());
-            String content = root.path("message").path("content").asText("");
+            String content = root.path("choices").path(0).path("message").path("content").asText("");
             if (content.isBlank()) {
-                log.warn("Ollama returned empty content");
+                log.warn("OpenAi returned empty content");
                 return fallbackResponse(userPrompt);
             }
             return content;
         } catch (Exception e) {
-            log.error("Ollama API call failed — is Ollama running? Model pulled?", e);
+            log.error("OpenAi API call failed", e);
             return fallbackResponse(userPrompt);
         }
+    }
+
+    @Override
+    public String evaluateFeynmanSummary(String topicTitle, String topicContent, String userExplanation) {
+        return chat("""
+            You are the AI learning tutor. The user has just studied the topic "%s" and tried to explain it in their own words (Feynman Technique).
+            
+            Topic Content:
+            %s
+            
+            User's Explanation:
+            %s
+            
+            Evaluate their explanation. Check for accuracy and completeness. 
+            Highlight what they explained well, and point out any misconceptions or missing key concepts.
+            At the end of your evaluation, output a score on a separate line in the format: "Score: X/100" (e.g. Score: 85/100).
+            """.formatted(topicTitle, truncate(topicContent), userExplanation));
     }
 
     private String truncate(String content) {
@@ -169,7 +220,7 @@ public class OllamaAiProvider implements AiProvider {
         start = text.indexOf('{');
         end = text.lastIndexOf('}');
         if (start >= 0 && end > start) {
-            return "[" + text.substring(start, end + 1) + "]";
+            return text.substring(start, end + 1);
         }
         return text;
     }
@@ -178,8 +229,7 @@ public class OllamaAiProvider implements AiProvider {
         if (prompt.contains("quiz") || prompt.contains("Quiz") || prompt.contains("JSON")) {
             return "[]";
         }
-        return "Local AI is unavailable. Ensure Ollama is running and the model is pulled: ollama pull "
-                + properties.getModel();
+        return "OpenAI Provider is disabled or unconfigured.";
     }
 
     private List<QuizQuestionData> fallbackQuiz(String topicTitle) {

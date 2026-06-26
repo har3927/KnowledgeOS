@@ -1,4 +1,4 @@
-const BASE = '/api'
+const BASE = (import.meta as any).env?.VITE_API_URL || '/api'
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -26,10 +26,19 @@ export const api = {
       return request<import('@/types').PageResponse<import('@/types').Topic>>(`/topics?${qs}`)
     },
     get: (id: number) => request<import('@/types').Topic>(`/topics/${id}`),
+    generateRandom: (categoryHint?: string) => {
+      const qs = new URLSearchParams()
+      if (categoryHint) qs.set('categoryHint', categoryHint)
+      return request<import('@/types').Topic>(`/topics/generate-random?${qs}`, { method: 'POST' })
+    },
   },
   learning: {
     start: (topicId: number) => request<import('@/types').Progress>(`/learning/topics/${topicId}/start`, { method: 'POST' }),
-    complete: (topicId: number) => request<import('@/types').Progress>(`/learning/topics/${topicId}/complete`, { method: 'POST' }),
+    complete: (topicId: number, data?: { warmUpText?: string; quizScore?: number; feynmanSubmission?: string; feynmanScore?: number; feynmanFeedback?: string }) =>
+      request<import('@/types').Progress>(`/learning/topics/${topicId}/complete`, {
+        method: 'POST',
+        body: data ? JSON.stringify(data) : undefined,
+      }),
     progress: () => request<import('@/types').Progress[]>('/learning/progress'),
     dashboard: () => request<import('@/types').Dashboard>('/learning/dashboard'),
     summary: () => request<import('@/types').ProgressSummary>('/learning/progress/summary'),
@@ -38,7 +47,7 @@ export const api = {
     due: () => request<import('@/types').Revision[]>('/revisions/due'),
     upcoming: () => request<import('@/types').Revision[]>('/revisions/upcoming'),
     completed: () => request<import('@/types').Revision[]>('/revisions/completed'),
-    complete: (id: number) => request<import('@/types').Revision>(`/revisions/${id}/complete`, { method: 'POST' }),
+    complete: (id: number, rating?: string) => request<import('@/types').Revision>(`/revisions/${id}/complete?rating=${rating || ''}`, { method: 'POST' }),
   },
   quizzes: {
     generate: (topicId: number) => request<import('@/types').Quiz>(`/quizzes/generate/${topicId}`, { method: 'POST' }),
@@ -64,6 +73,11 @@ export const api = {
     summary: (topicId: number) => request<{ summary: string }>(`/ai/topics/${topicId}/summary`),
     explanation: (topicId: number) => request<{ explanation: string }>(`/ai/topics/${topicId}/explanation`),
     quiz: (topicId: number) => request<import('@/types').Quiz>(`/ai/quiz/${topicId}`, { method: 'POST' }),
+    feynmanEval: (topicId: number, explanation: string) =>
+      request<{ feedback: string; score: number }>(`/ai/topics/${topicId}/feynman-eval`, {
+        method: 'POST',
+        body: JSON.stringify({ explanation }),
+      }),
   },
   graph: {
     get: () => request<import('@/types').Graph>('/graph'),

@@ -2,10 +2,10 @@ spring:
   application:
     name: knowledgeos
   datasource:
-    url: jdbc:postgresql://localhost:5432/knowledgeos
-    username: knowledgeos
-    password: knowledgeos
-    driver-class-name: org.postgresql.Driver
+    url: ${JDBC_DATABASE_URL:jdbc:h2:file:./db/knowledgeos;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE}
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
   jpa:
     hibernate:
       ddl-auto: validate
@@ -27,11 +27,12 @@ logging:
 
 knowledgeos:
   ai:
-    ollama:
-      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
-      model: ${OLLAMA_MODEL:qwen2.5:7b  }
-      enabled: ${OLLAMA_ENABLED:true}
-      timeout-seconds: ${OLLAMA_TIMEOUT_SECONDS:120}
+    openai:
+      base-url: ${OPENAI_BASE_URL:https://integrate.api.nvidia.com/v1}
+      model: ${OPENAI_MODEL:z-ai/glm-5.1}
+      api-key: ${OPENAI_API_KEY:}
+      enabled: ${OPENAI_ENABLED:true}
+      timeout-seconds: ${OPENAI_TIMEOUT_SECONDS:60}
   default-user-id: 1
 
 springdoc:

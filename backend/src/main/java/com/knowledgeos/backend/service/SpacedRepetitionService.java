@@ -23,20 +23,18 @@ public class SpacedRepetitionService {
     @Transactional
     public void scheduleRevisions(User user, Topic topic) {
         LocalDate baseDate = LocalDate.now();
-        for (int i = 0; i < REVISION_INTERVALS.length; i++) {
-            int level = i + 1;
-            if (!revisionRepository.existsByUserIdAndTopicIdAndRevisionLevel(user.getId(), topic.getId(), level)) {
-                RevisionSchedule schedule = RevisionSchedule.builder()
-                        .user(user)
-                        .topic(topic)
-                        .nextRevisionDate(baseDate.plusDays(REVISION_INTERVALS[i]))
-                        .revisionLevel(level)
-                        .completed(false)
-                        .build();
-                revisionRepository.save(schedule);
-                log.info("Scheduled revision level {} for topic {} on {}",
-                        level, topic.getId(), schedule.getNextRevisionDate());
-            }
+        int level = 1;
+        if (!revisionRepository.existsByUserIdAndTopicIdAndRevisionLevel(user.getId(), topic.getId(), level)) {
+            RevisionSchedule schedule = RevisionSchedule.builder()
+                    .user(user)
+                    .topic(topic)
+                    .nextRevisionDate(baseDate.plusDays(REVISION_INTERVALS[0]))
+                    .revisionLevel(level)
+                    .completed(false)
+                    .build();
+            revisionRepository.save(schedule);
+            log.info("Scheduled initial revision level {} for topic {} on {}",
+                    level, topic.getId(), schedule.getNextRevisionDate());
         }
     }
 
