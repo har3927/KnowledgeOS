@@ -9,3 +9,4 @@
 .env
 /db/
 *.db
+/src/main/resources/static/
