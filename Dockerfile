@@ -12,7 +12,7 @@ WORKDIR /app
 COPY backend/pom.xml .
 COPY backend/src ./src
 # Copy compiled static assets from Stage 1 into Spring Boot resources
-COPY --from=frontend-build /backend/src/main/resources/static ./src/main/resources/static
+COPY --from=frontend-build /frontend/dist ./src/main/resources/static
 RUN mvn clean package -DskipTests
 
 # Stage 3: Run stage
